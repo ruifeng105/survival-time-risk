@@ -99,7 +99,7 @@ table("tab_ge.tex", "@{}cccccccccc@{}",
 cl = J("closedloop.json")
 names = {"nominal": "nominal", "C1": "$C_1$", "C2": "$C_2$", "C2_D16": "$C_2$, $D=16$", "C2_D20": "$C_2$, $D=20$"}
 table("tab_closed.tex", "@{}lccccc@{}",
-      r"channel & $R(\pi_L)$ & $\Lambda_\pi$ & $\Lambda_\pi/R$ & $\nu_\pi$ & decomposition error",
+      r"channel & $R(\pi_L)$ & $\Lambda_\pi$ & $\Lambda_\pi/R$ & $\omega_\pi$ & decomposition error",
       [[names[r["name"]], sci(r["R"], 3), sci(r["Lambda"], 3), f"${r['Lambda'] / r['R']:.3f}$", f"${r['nu']:.2f}$",
         sci(abs(r["Lambda"] - r["Lambda_direct"]) / r["Lambda"], 1)] for r in cl["rows"]],
       r"Closed-loop bound $\Lambda_\pi$ for $\pi_L$",
@@ -159,9 +159,9 @@ table("tab_flocklab.tex", "@{}lrccrcccccccc@{}",
 # ---- S-Table: Monte Carlo cross-check ----------------------------------------------------------
 mc = J("mc_check.json")
 table("tab_mc.tex", "@{}lcccc@{}",
-      r"channel, task & exact & Monte Carlo & std.\ error & deviation",
+      r"channel, task & exact & Monte Carlo & std.\ error & deviation (std.\ errors)",
       [[f"${n[0]}_{n[1]}$, {t}", sci(v[f'{k}_exact'], 4), sci(v[f'{k}_mc'], 4), sci(v[f'{k}_se'], 2),
-        f"${abs(v[f'{k}_mc'] - v[f'{k}_exact']) / v[f'{k}_se']:.1f}\\sigma$"]
+        f"${abs(v[f'{k}_mc'] - v[f'{k}_exact']) / v[f'{k}_se']:.1f}$"]
        for n, v in mc.items() for k, t in (("dense", "dense"), ("B15", r"$\pi_L$, $B{=}15$"))],
       r"Monte Carlo check of the exact evaluators",
       "tab:s-mc")
