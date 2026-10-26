@@ -2,7 +2,7 @@
 P(gamma_{t+k} = 1 | last observed outcome o, k slots ago) of the Gilbert fit. pi_rec runs the
 same dynamic program with the channel's true recovery curve, a statistic that can be
 estimated from a trace. Both are evaluated exactly on second-order channels of the class
-and on the Gilbert-Elliott channels of Section V and Table S8 (T = 60, D = 12, B = 15)."""
+and on the Gilbert-Elliott channels of Section V and Table S7 (T = 60, D = 12, B = 15)."""
 import json
 import numpy as np
 from core import words, example_chain, A_RANGE, B_RANGE

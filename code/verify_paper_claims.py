@@ -1,5 +1,5 @@
 """Recheck the key numerical claims of the paper from the stored results (run: python3 verify_paper_claims.py)."""
-import random, math
+import os, random, math
 from fractions import Fraction as Fr
 from core import *
 random.seed(3)
@@ -71,11 +71,10 @@ check(ok_low, "decay rate (Prop. S2): sigma_g >= rho^g (g = 2,3,4)")
 check(ok_pos, "decay rate (Prop. S2): Q_g entrywise positive for g >= M")
 check(err_q2 < 1e-12, "closed-form Q_2 for M = 2 matches the loss-to-loss matrix")
 an = json.load(open("results/analytic.json"))
-check(abs(an["C1"]["sigma2"] - 0.2385) < 5e-4 and abs(an["C2"]["sigma2"] - 0.4334) < 5e-4, "sigma_2(C1) = 0.239, sigma_2(C2) = 0.433")
-check(abs(an["C1"]["sigma2"] / 0.44**2 - 1.23) < 0.005 and abs(an["C2"]["sigma2"] / (11/30)**2 - 3.22) < 0.005, "relapse penalties 1.23 and 3.22")
+check(round(an["C1"]["sigma2"], 3) == 0.238 and round(an["C2"]["sigma2"], 3) == 0.433, "sigma_2(C1) = 0.238, sigma_2(C2) = 0.433")
 check(abs(an["slope_dense"] - an["pred_dense"]) < 1e-4 and abs(an["slope_spaced"] - an["pred_spaced"]) < 1e-4, "supplement S3.5: spectral slopes match to four digits")
 check(an["first_reversal_D"] == 4 and an["reversal_all_D_after"] and max(r["D"] for r in an["by_D"]) == 40, "Sec. IV and supplement S3.5: reversal for every even D from 4 to 40 (n = 48)")
-# certificates and baselines (Sec. V, Table S5)
+# certificates and baselines (Sec. V, Table S4)
 bl = json.load(open("results/baselines.json"))
 exp = [(1.46e-2, 0.242, 0.253, 0.973), (2.07e-4, 0.142, 0.143, 0.795), (5.97e-2, 0.286, None, 0.985)]
 good = True
@@ -84,7 +83,7 @@ for row, (rn, rp, ce, iv) in zip(bl, exp):
     good &= (ce is None and row["box_certificate"] is None) or (ce is not None and abs(row["box_certificate"] - ce) < 6e-4)
     good &= row["box_certificate"] is None or row["box_certificate"] >= row["R_plus"]
 check(good, "baseline numbers (Sec. V) and box certificate >= grid worst case")
-# Gilbert-Elliott channels (Sec. V, Table S8)
+# Gilbert-Elliott channels (Sec. V, Table S7)
 ge = json.load(open("results/ge.json"))
 dense0 = [r["R_dense"] for r in ge if r["eG"] == 0.0]
 check(max(dense0) / min(dense0) - 1 < 0.003, "GE with e_G = 0: dense risks agree within 0.3%")
@@ -93,9 +92,15 @@ check(abs(b15[(0.0, 0.65)] / b15[(0.0, 1.0)] - 2.13) < 0.01, "GE budgeted risk g
 check(all(r["in_box"] for r in ge), "GE second-order projections inside the box")
 check(max(abs(r["R_dense_proj2"] - r["R_dense"]) / r["R_dense"] for r in ge) < 0.004
       and max(abs(r["R_B15_proj2"] - r["R_B15"]) / r["R_B15"] for r in ge) < 0.08, "projection error within 0.4% (dense) and 8% (B=15)")
-# eta sensitivity (Table S6) and Remark S1
+# eta sensitivity (Table S5) and Remark S1
 et = json.load(open("results/eta.json"))
-check(all(15.5 < r["ratio_nom"] < 16.6 for r in et["rows"] if r["eta"] <= 0.05), "supplement Table S6: R+/R_nom about 16 for eta in [0.01, 0.05]")
+check(all(15.5 < r["ratio_nom"] < 16.6 for r in et["rows"] if r["eta"] <= 0.05), "supplement Table S5: R+/R_nom about 16 for eta in [0.01, 0.05]")
+et_ = {r["eta"]: r for r in et["rows"]}
+check(round(et_[0.05]["R_plus"], 3) == 0.240 and abs(et_[0.1]["rho_worst"] - et_[0.1]["rho_hi"]) < 1e-12 and abs(et_[0.1]["rho_hi"] - 0.9) < 1e-12
+      and round(float(rho_star(60, 12, 2)), 3) == 0.928 and all(et_[e]["rho_lo"] < et_[e]["rho_worst"] < et_[e]["rho_hi"] for e in (0.01, 0.02, 0.05)),
+      "supplement S4.2: Table S5 gives 0.240 at eta = 0.05 (b at mid-range); interior worst case for eta <= 0.05, rho_hi = 0.9 < rho* = 0.928 for eta = 0.1")
+check(round({r["B"]: r for r in json.load(open("results/budget.json"))["closed_loop_sweep"]}[60]["Rmax"], 3) == 0.241 and round(json.load(open("results/baselines.json"))[0]["R_plus"], 3) == 0.242,
+      "supplement S4.2: the dense worst case at D = 12 is 0.241 on the 47x21 grid (Table S3) and 0.242 with the 2001-point refinement in rho (Table S4)")
 m3 = json.load(open("results/M3L1.json"))
 check(abs(m3["R_at_max"] - 0.240) < 5e-4, "supplement Remark S1: risk 0.240 at the Lambda-maximizer for M=3, L=1")
 check(abs(m3["Lambda_max"] - 0.254) < 5e-4 and abs(json.load(open("results/baselines.json"))[0]["box_certificate"] - 0.253) < 5e-4,
@@ -122,9 +127,18 @@ check(round(bs_["b_sensitivity"][0]["ratio_periodic_g2"], 1) == 34.6 and round(b
 dc = json.load(open("results/decimation.json"))
 check(dc["identity_max_rel_err"] < 1e-12, "Proposition 1: periodic crossing count = dense count of the decimated process (incl. GE)")
 r1, r2 = dc["C1"]["rho2"], dc["C2"]["rho2"]
-check(0.23 <= min(r1) and max(r1) <= 0.285 and 0.425 <= min(r2) and max(r2) <= 0.445 and max(r1) < min(r2),
-      "2-decimated persistences in [0.23,0.28] (C1) and [0.43,0.44] (C2), C1 below C2 at every depth")
-check(abs(r1[-1] - dc["C1"]["sigma2"]) < 2e-3 and abs(r2[-1] - dc["C2"]["sigma2"]) < 2e-3, "decimated persistences converge to sigma_2")
+deep = {}
+for name_, (a_, b_) in {"C1": (0.56, 0.95), "C2": (19 / 30, 0.45)}.items():   # depths 1..60 through Q_2 (supplement S3.4)
+    ch_ = example_chain(a_, b_); Q_, W0_ = loss_matrix(ch_, 2); mu_ = np.array([float(ch_.mu[w]) for w in W0_])
+    p_ = [mu_ @ np.linalg.matrix_power(Q_, j - 1) @ np.ones(len(W0_)) for j in range(1, 62)]
+    deep[name_] = [p_[j] / p_[j - 1] for j in range(1, 61)]
+check(np.allclose(deep["C1"][:len(r1)], r1, atol=1e-12) and np.allclose(deep["C2"][:len(r2)], r2, atol=1e-12)
+      and round(r1[0], 3) == 0.284 and round(r2[0], 2) == 0.44
+      and round(min(deep["C1"]), 4) == 0.2326 and round(max(deep["C1"]), 3) == 0.284
+      and round(min(deep["C2"]), 4) == 0.4293 and round(max(deep["C2"]), 2) == 0.44 and max(deep["C1"]) < min(deep["C2"]),
+      "2-decimated persistences: rho_1^(2) = 0.284 (C1) and 0.44 (C2), within [0.2326, 0.284] and [0.4293, 0.44] for j <= 60, C1 below C2 at every depth")
+check(abs(deep["C1"][-1] - dc["C1"]["sigma2"]) < 5e-9 and abs(deep["C2"][-1] - dc["C2"]["sigma2"]) < 5e-9,
+      "decimated persistences converge to sigma_2 (eight digits at j = 60)")
 check(abs(10 / 0.6 - 48 / (1 + 48 * 0.4) - 14.3) < 0.01, "elasticity d log Lambda / d rho = 14.3 at rho_nom (T=60, D=12)")
 # Fig. 4 sweep
 sw = json.load(open("results/sweep.json"))["rows"]
@@ -136,7 +150,17 @@ gil_ = lambda e, l: {(0, 0): e - e / l, (0, 1): e / l, (1, 0): e / l, (1, 1): 1 
 empty_ = sum(any(a > b for a, b in box_ranges(gil_(Fr(str(r["eps"])), Fr(str(r["ell"]))), 1, Fr(1, 20)).values()) for r in sw)
 check(len(sw) == 36 and empty_ == 27 and min(r["D"] for r in sw) == 6 and max(r["D"] for r in sw) == 42,
       "sweep: D from 6 to 42; eta = 0.05 would leave the class empty for 27 of the 36 fits (exact arithmetic)")
-# fading channels (Table I, Table S11)
+check(all(r["dense"]["R_minus"] <= 1e-4 < r["dense"]["R_plus"] for r in sw),
+      "sweep (Sec. V-A): R^- <= eps = 1e-4 < R^+ for every fit with dense attempts")
+def b_bounds_(r, e=1e-4):   # range of b = p(01) over the M=2 box of a Gilbert fit (Lemma 1, m = 1)
+    c01 = r["eps"] / r["ell"]; c11 = 1 - r["eps"] - c01
+    return 1 - min((1 - e) * c01, c01 - e * c11) / c01, 1 - max(e * c01, c01 - (1 - e) * c11) / c01
+nk_ = [r for r in sw if 60 - r["D"] <= r["D"] - 2]
+onb_ = sum(any(abs(r["B15"]["b_worst"] - x) < 1e-6 for x in b_bounds_(r)) for r in sw)
+check(sorted((r["eps"], r["ell"]) for r in nk_) == [(e, 5.0) for e in (0.01, 0.02, 0.05, 0.1, 0.2)]
+      and all(abs(r["dense"]["rho_worst"] - (1 - 1e-4)) < 1e-6 for r in nk_) and onb_ >= 18,
+      f"sweep: n <= k exactly for mean burst 5 and loss >= 1%, dense worst case at rho_hi; {onb_} of 36 B=15 worst cases on a bound of b")
+# fading channels (Table I, Table S10)
 fr = json.load(open("results/fading.json"))["rows"]; fs = json.load(open("results/fading_shadow.json"))["rows"]
 row = lambda rows, eps, fd, D: next(r for r in rows if r["eps"] == eps and r["fd"] == fd and r["D"] == D)
 s16 = row(fs, 0.01, 0.03, 16)["dense"]
@@ -152,36 +176,41 @@ check(all(r["dense"]["M1"] < r["dense"]["truth"] for r in fs if r["D"] >= 12),
 prof = row(fs, 0.05, 0.03, 10)["profile"]["dense"]
 check(abs(prof[0] - 0.76) < 0.01 and abs(prof[-1] - 0.92) < 0.01 and all(b >= a - 1e-3 for a, b in zip(prof, prof[1:])),
       "shadowed 5%: persistence grows with burst depth from 0.76 to 0.92")
-check(max(r["p0_01"] for r in fr + fs) <= 0.011, "fading channels rarely relapse: P(0|01) <= 0.011")
+check(max(r["p0_01"] for r in fr + fs) <= 0.011, "fading channels rarely relapse: 1 - b <= 0.011")
 out_ = [r for r in fr + fs if not r["dense"]["class_min"] <= r["dense"]["truth"] <= r["dense"]["class_max"]]
 check(json.load(open("results/fading.json"))["eta"] == 1e-4 and len(fr + fs) == 15 and len(out_) == 3
-      and all(r in fr and r["fd"] <= 0.01 and r["D"] >= 14 for r in out_)
-      and all(r["dense"]["class_min"] <= r["dense"]["truth"] for r in fr + fs if r["fd"] > 0.01 or r["D"] < 14),
-      "M=2 class (eta = 1e-4) brackets the trace-driven dense risk except in 3 of 15 cases, all slow Rayleigh at D >= 14")
-# closed-loop bound (Eq. (15), Prop. S3) and the redesign paragraph
+      and all(r in fr and r["fd"] <= 0.01 and r["D"] >= 14 and r["dense"]["truth"] < r["dense"]["class_min"] for r in out_)
+      and all(r["dense"]["truth"] <= r["dense"]["class_max"] for r in fr + fs),
+      "Table I footnote and S5.4: the M=2 class (eta = 1e-4) bounds the dense trace risk from above in all 15 cases; the 3 exceptions, slow Rayleigh at D >= 14, lie below R^-")
+o15_ = {(r["fd"], r["D"], "below" if r["piL_B15"]["truth"] < r["piL_B15"]["class_min"] else "above")
+        for r in fr + fs if not r["piL_B15"]["class_min"] <= r["piL_B15"]["truth"] <= r["piL_B15"]["class_max"]}
+check(o15_ == {(0.01, 16, "below"), (0.01, 20, "below"), (0.005, 8, "above")},
+      "supplement S5.4: for pi_L (B=15) the trace risk lies below the class range at f_D = 0.01, D >= 16, and above R^+ at f_D = 0.005, D = 8")
+# closed-loop decomposition (Eq. (15), Prop. S3), Proposition 2, and the redesign (supplement S5.2)
 cl = json.load(open("results/closedloop.json"))
-check(cl["decomposition_err"] < 1e-12, "closed-loop bound (Prop. S3): retry-pattern decomposition equals the direct crossing count")
-check(cl["patterns"]["10"] == [15, 17, 19, 20, 21, 22], "pi_L retry pattern after a success at s=10 with r=12")
+check(cl["decomposition_err"] < 1e-12 and cl["max_rel_diff"] < 1e-14 and all(abs(r["Lambda"] / r["R"] - 1) < 1e-14 for r in cl["grid"] + cl["rows"]),
+      "closed-loop decomposition (Eq. (15), Prop. S3): Lambda_pi = R to a relative 1e-14 on the 9x5 grid, matching the direct crossing count")
+check(cl["patterns"]["0"] == [5, 7, 9, 10, 11, 12], "pi_L retry pattern at the mission start (Sec. IV-B)")
 rv_ = json.load(open("results/reversal_exact.json"))
 pr_ = [rv_[k][c]["float"] for k in ("dense", "periodic_g2", "closed_loop_B15") for c in ("C1", "C2")]
+rb_ = {k: (Fr(v[0]) / Fr(3, 25), 1 - Fr(v[1]) / Fr(2, 25)) for k, v in rv_["box_t"].items()}   # (rho, b) = (x0/c(00), 1 - x1/c(01))
 check(rv_["box_t"] == {"C1": ["33/625", "1/250"], "C2": ["11/250", "11/250"]}
+      and rb_ == {"C1": (Fr(11, 25), Fr(19, 20)), "C2": (Fr(11, 30), Fr(9, 20))}
       and [f"{x:.2e}" for x in pr_] == ["9.10e-04", "1.66e-04", "3.46e-03", "4.45e-02", "1.30e-02", "6.04e-02"]
       and pr_[0] > pr_[1] and pr_[2] < pr_[3] and pr_[4] < pr_[5]
       and round(rv_["pi_L_B15_retry_gap_distribution_nominal"]["2"], 2) == 0.70,
-      "Proposition 2: (x0, x1) of C1 and C2, the six exact risks and their orders; 70% of pi_L's retries spaced two slots")
-c2 = {r["name"]: r["Lambda"] / r["R"] for r in cl["rows"]}
-check(cl["max_gap"] <= 0.305 and round(c2["C2"] - 1, 2) == 0.16 and round(c2["C2_D16"] - 1, 2) == 0.07 and round(c2["C2_D20"] - 1, 2) == 0.02,
-      "Lambda_pi exceeds R by at most 30% over the class; by 16%, 7%, 2% on C2 for D = 12, 16, 20")
-check(all(r["Lambda"] >= r["R"] for r in cl["grid"] + cl["rows"]), "closed-loop bound (Prop. S3): R <= Lambda_pi on every evaluated channel")
+      "Proposition 2: (rho, b) = (0.44, 0.95) and (11/30, 0.45) for C1 and C2, the six exact risks and their orders; 70% of pi_L's retries spaced two slots")
 rd = json.load(open("results/redesign.json"))
 ch_ = {r["name"]: r for r in rd["chains"]}; ge65 = next(r for r in rd["ge"] if r["eB"] == 0.65)
-check(abs(ch_["C2"]["R_piL"] - 6.04e-2) < 1e-4 and abs(ch_["C2"]["R_rec"] - 2.68e-2) < 1e-4, "redesign: C2 6.0e-2 -> 2.7e-2")
+check(abs(ch_["C2"]["R_piL"] - 6.04e-2) < 5e-5 and abs(ch_["C2"]["R_rec"] - 2.68e-2) < 5e-5
+      and abs(ch_["C1"]["R_piL"] - 1.30e-2) < 5e-5 and abs(ch_["C1"]["R_rec"] - 1.67e-2) < 5e-5,
+      "supplement S5.2: the redesign lowers C2 from 6.04e-2 to 2.68e-2 but raises C1 from 1.30e-2 to 1.67e-2")
 check(abs(ge65["R_piL"] - 0.127) < 5e-4 and abs(ge65["R_rec"] - 0.093) < 1e-3 and round(ge65["R_rec"] / ge65["R_genie"] - 1, 2) == 0.06,
-      "redesign: GE e_B=0.65 0.127 -> 0.093, 6% above the genie")
+      "supplement S5.2: GE e_B=0.65 0.127 -> 0.093, 6% above the genie")
 grid_ = rd["grid"]; win_ = [g["R_rec"] < g["R_piL"] for g in grid_]
 check(sum(win_) == 22 and len(grid_) - sum(win_) == 23 and round(max(g["R_rec"] / g["R_piL"] for g in grid_), 2) == 1.47
-      and all(w for g, w in zip(grid_, win_) if g["b"] <= 0.575 + 1e-9) and ch_["C1"]["R_piL"] < ch_["C1"]["R_rec"],
-      "redesign grid: wins on all b <= 0.575, loses on 23 of 45 by up to 1.47x, including C1")
+      and all(w for g, w in zip(grid_, win_) if g["b"] <= 0.575 + 1e-9) and all(g["b"] >= 0.7 - 1e-9 for g, w in zip(grid_, win_) if not w),
+      "supplement S5.2: redesign wins on all b <= 0.575, loses on 23 of 45 (all with b >= 0.7) by up to 1.47x")
 check(all(r["R_genie"] <= min(r["R_piL"], r["R_rec"]) + 1e-12 for r in rd["chains"] + rd["ge"] + rd["grid"]), "genie is a lower bound on both policies")
 # Measured links (FlockLab)
 fl = json.load(open("results/flocklab.json")); fr_ = fl["rows"]
@@ -190,8 +219,11 @@ rb_ = np.array([r["B15"]["truth"] / r["B15"]["M1"] for r in fr_])
 tests_ = [r["tests"] for r in fr_]
 check(len(fr_) == 171 and min(tests_) == 567 and max(tests_) == 805 and all(0.01 <= r["loss"] <= 0.25 for r in fr_),
       "FlockLab: 171 links, loss 1-25%, 567-805 distinct tests each (deduplicated)")
-check(round(np.mean(rd_ > 1), 2) == 0.64 and round(np.mean(rd_ >= 2), 2) == 0.49 and round(rd_.max()) == 12,
-      "FlockLab dense: measured risk above Gilbert on 64%, >= 2x on 49%, up to 12x")
+check(round(np.mean(rd_ > 1), 2) == 0.64 and round(rd_.max()) == 12,
+      "FlockLab dense: measured risk above Gilbert on 64%, up to 12x")
+ex_ = np.mean([r["dense"]["truth"] > 1e-2 for r in fr_]); exs_ = np.mean([r["dense"]["truth"] - 2 * r["dense"]["se"] > 1e-2 for r in fr_])
+check(max(r["dense"]["M1"] for r in fr_) <= 1e-2 and round(ex_, 2) == 0.55 and round(exs_, 2) == 0.42,
+      "FlockLab dense: the fit certifies 1e-2 on every link, yet the measured risk exceeds 1e-2 on 55% (42% beyond two standard errors)")
 sig_ = np.mean([r["dense"]["truth"] - 2 * r["dense"]["se"] > r["dense"]["M1"] for r in fr_])
 check(round(sig_, 2) == 0.47, "FlockLab dense: above Gilbert by more than two standard errors on 47%")
 sig2_ = np.mean([r["dense"]["truth"] - 2 * r["dense"]["se"] > r["dense"]["M2"] for r in fr_])
@@ -211,12 +243,37 @@ from scipy.stats import spearmanr
 low_ = [r for r in fr_ if r["dense"]["truth"] + 2 * r["dense"]["se"] < r["dense"]["M1"]]
 check(round(len(low_) / len(fr_), 2) == 0.20 and max(r["mean_burst"] for r in low_) < 1.9,
       "FlockLab dense: significantly lower than Gilbert on 20%, all with mean burst < 1.9")
+z_ = [r for r in fr_ if r["dense"]["truth"] == 0]; z3_ = sum(3 / r["tests"] < r["dense"]["M1"] for r in z_)
+check(len(z_) == 7 and all(r in low_ for r in z_) and z3_ == 4 and round((len(low_) - len(z_) + z3_) / len(fr_), 2) == 0.19,
+      "supplement S5.5: 7 links without a failing mission count as significantly lower; by the rule of three only 4 do (19% instead of 20%)")
 rho_s = spearmanr(rd_, [r["mean_burst"] for r in fr_]).correlation
 check(round(rho_s, 2) == 0.92, f"FlockLab: rank correlation of the error with mean burst length {rho_s:.3f}")
 rho_l = spearmanr(rd_, [r["loss"] for r in fr_]).correlation
 check(round(rho_l, 2) == 0.93, f"FlockLab: rank correlation of the error with loss rate {rho_l:.3f}")
 gain_ = np.array([r["B15"]["truth"] / r["B15"]["rec"] for r in fr_])
-check(abs(np.median(gain_) - 1.015) < 0.003, f"FlockLab: median redesign gain {100 * (np.median(gain_) - 1):.1f}%")
+check(abs(np.median(gain_) - 1.015) < 0.003 and round(gain_.max(), 2) == 1.27 and int(np.sum(gain_ < 1)) == 52,
+      f"supplement S5.2: median redesign gain {100 * (np.median(gain_) - 1):.1f}% on the measured links, at most 1.27x, worse on 52 of 171")
 check(len(rep_) == 4 and all(r["dense"]["class_min"] <= r["dense"]["truth"] <= r["dense"]["class_max"] for r in rep_.values()),
-      "FlockLab: the M=2 class brackets the measured risk on the burstiest link of each of the four loss bands")
+      "FlockLab: the M=2 class brackets the measured dense risk on the burstiest link of each of the four loss bands")
+# Table I as printed (Loss, D, R, dense L=1, dense L=2, pi_L L=1), cell by cell against the stored results
+TABLE_I = [("5", 20, "0.018", "1.7", "1.5", "1.7"), ("5", 10, "0.025", "1.1", "0.54", "1.4"), ("5", 18, "0.016", "0.30", "0.32", "0.40"),
+           ("1", 12, "0.0025", "0.086", "0.21", "0.19"), ("1", 16, "0.0010", "0.015", "0.053", "0.034"),
+           ("12", 15, "0.050", "0.17", "0.39", "0.26"), ("19", 18, "0.080", "0.10", "0.26", "0.18")]
+src_ = [(row(fr, 0.05, 0.01, 20), "piL_B15"), (row(fr, 0.05, 0.03, 10), "piL_B15"), (row(fs, 0.05, 0.03, 18), "piL_B15"),
+        (row(fs, 0.01, 0.03, 12), "piL_B15"), (row(fs, 0.01, 0.03, 16), "piL_B15"), (a_, "B15"), (b_, "B15")]
+def same_(s, v):   # printed value s equals v rounded to the significant digits that s shows
+    return abs(float(s) - float(f"{v:.{len(s.replace('.', '').lstrip('0'))}g}")) < 1e-12
+okT_ = True
+for (loss_, D_, *cells_), (r, k15) in zip(TABLE_I, src_):
+    d = r["dense"]
+    okT_ &= round(100 * r.get("eps", r["loss"])) == int(loss_) and r["D"] == D_ and same_(cells_[0], d["truth"])
+    okT_ &= same_(cells_[1], d["M1"] / d["truth"]) and same_(cells_[2], d["M2"] / d["truth"]) and same_(cells_[3], r[k15]["M1"] / r[k15]["truth"])
+    okT_ &= (r is src_[0][0]) == (not d["class_min"] <= d["truth"] <= d["class_max"])   # the dagger marks the first row only
+tex_ = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "paper", "main.tex")
+if os.path.exists(tex_):   # private repository: TABLE_I must match the table in main.tex
+    body_ = open(tex_, encoding="utf-8").read().split(r"\label{tab:fading}")[1].split(r"\bottomrule")[0]
+    rows_ = [[c.strip().replace("$", "").replace(r"^\dagger", "").replace(r"\%", "") for c in l.split("&")]
+             for l in body_.split(r"\\") if l.count("&") == 6 and "Channel" not in l]
+    okT_ &= [tuple(c[1:]) for c in rows_] == [(l, str(D), *c) for l, D, *c in TABLE_I]
+check(okT_, "Table I: every Loss, D, R and ratio cell matches the stored results; the dagger marks the only case outside the M=2 class")
 print("ALL PASS" if ok else "SOME CHECKS FAILED")

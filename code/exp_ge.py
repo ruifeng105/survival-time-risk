@@ -1,5 +1,5 @@
 """Gilbert-Elliott channels that share the Gilbert fit of the running example: exact dense and
-budgeted risks and their second-order projections (Section V of the paper, Table S8)."""
+budgeted risks and their second-order projections (Section V of the paper, Table S7)."""
 import json
 from core import *
 from ge import *

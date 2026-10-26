@@ -95,16 +95,6 @@ table("tab_ge.tex", "@{}cccccccccc@{}",
       r"Gilbert--Elliott channels sharing the Gilbert fit of the running example",
       "tab:s-ge", size="footnotesize", sep=2.5)
 
-# ---- S-Table: closed-loop bound ----------------------------------------------------------------
-cl = J("closedloop.json")
-names = {"nominal": "nominal", "C1": "$C_1$", "C2": "$C_2$", "C2_D16": "$C_2$, $D=16$", "C2_D20": "$C_2$, $D=20$"}
-table("tab_closed.tex", "@{}lccccc@{}",
-      r"channel & $R(\pi_L)$ & $\Lambda_\pi$ & $\Lambda_\pi/R$ & $\omega_\pi$ & decomposition error",
-      [[names[r["name"]], sci(r["R"], 3), sci(r["Lambda"], 3), f"${r['Lambda'] / r['R']:.3f}$", f"${r['nu']:.2f}$",
-        sci(abs(r["Lambda"] - r["Lambda_direct"]) / r["Lambda"], 1)] for r in cl["rows"]],
-      r"Closed-loop bound $\Lambda_\pi$ for $\pi_L$",
-      "tab:s-closed")
-
 # ---- S-Table: redesign over the class ----------------------------------------------------------
 grid = rd["grid"]
 rat = np.array([g["R_piL"] / g["R_rec"] for g in grid]); best = np.array([g["R_piL"] / min(g["R_piL"], g["R_rec"]) for g in grid])
@@ -167,7 +157,6 @@ table("tab_mc.tex", "@{}lcccc@{}",
       "tab:s-mc")
 
 # ---- numbers quoted next to the tables in the supplement ---------------------------------------
-print(f"tab:s-closed:   Lambda_pi/R <= {1 + cl['max_gap']:.2f}")
 print(f"tab:s-dense:    largest bound violation {dm['max_bound_violation']:.1e}")
 print(f"tab:s-m3:       rho in [{d3['rho_lo']:.3f}, {d3['rho_hi']:.3f}], rho_nom = {d3['rho_nom']:.3f}")
 print(f"tab:s-eta:      R_nom = {et['R_nom']:.3g}")
