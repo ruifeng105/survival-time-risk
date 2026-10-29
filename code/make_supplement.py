@@ -26,6 +26,9 @@ def sci(x, d=2):
     return f"${m}$" if e == 0 else f"${m}\\!\\times\\!10^{{{e}}}$"
 
 
+def f3(x, d): return sci(x, 2).strip("$") if x < 10 ** -d else f"{x:.4f}" if x > 1 - 10 ** -d else f"{x:.{d}f}"
+
+
 def g2(x): return f"{x:.2g}" if x < 10 else f"{x:.0f}" if x < 1000 else f"{x / 1e3:.1f}k"
 
 
@@ -71,7 +74,7 @@ table("tab_dense.tex", "@{}rrccccccc@{}",
       r"$T$ & $D$ & $\rho_w$ (Thm.) & argmax $\Lambda$ & argmax $R$ & $R^+$ & $R^-$ & $R_{\mathrm{nom}}$ & $R^+/R_{\mathrm{nom}}$",
       [[str(c["T"]), str(c["D"]), f"${c['rho_pred']:.3f}$", f"${c['rho_argmax_EN']:.3f}$", f"${c['rho_argmax_R']:.3f}$",
         sci(c["Rmax"]), sci(c["Rmin"]), sci(c["R_nominal"]), f"${g2(c['nominal_ratio'])}$"] for c in rows],
-      r"Dense attempts over the compatible class of the running example",
+      r"Dense attempts over $\rho$ at $b=0.7$ in the running example",
       "tab:s-dense")
 
 # ---- S-Table: third-order class (L = 2) --------------------------------------------------------
@@ -112,9 +115,9 @@ sw = J("sweep.json")
 table("tab_sweep.tex", "@{}rrrcccccc@{}",
       r"loss & $\ell$ & $D$ & $R_{\mathrm{nom}}$ & $R^+/R_{\mathrm{nom}}$ & worst $\rho$ & $R_{\mathrm{nom}}$, $B{=}15$ & $R^+/R_{\mathrm{nom}}$, $B{=}15$ & worst $(\rho,b)$, $B{=}15$",
       [[f"${100 * r['eps']:g}\\%$", f"${r['ell']:g}$", str(r["D"]), sci(r["dense"]["R_nom"]), f"${g2(r['dense']['R_plus'] / r['dense']['R_nom'])}$",
-        f"${r['dense']['rho_worst']:.3f}$", sci(r["B15"]["R_nom"]), f"${g2(r['B15']['R_plus'] / r['B15']['R_nom'])}$",
-        f"$({r['B15']['rho_worst']:.3f},\\,{r['B15']['b_worst']:.2f})$"] for r in sw["rows"]],
-      r"Ambiguity across links",
+        f"${f3(r['dense']['rho_worst'], 3)}$", sci(r["B15"]["R_nom"]), f"${g2(r['B15']['R_plus'] / r['B15']['R_nom'])}$",
+        f"$({f3(r['B15']['rho_worst'], 3)},\\,{f3(r['B15']['b_worst'], 2)})$"] for r in sw["rows"]],
+      r"Ambiguity across Gilbert fits",
       "tab:s-sweep", size="footnotesize", sep=2.5)
 
 # ---- S-Tables: fading channels, all configurations --------------------------------------------
@@ -189,7 +192,7 @@ for i, (lab, pr) in enumerate(series):
     a1.hlines(dn[0], 1, len(dn), color=C[i], lw=0.7, ls=":")
     a2.plot(range(1, len(dc) + 1), dc, color=C[i], marker="o", ms=2.5)
 a1.set_xlabel(r"burst depth $j$"); a1.set_ylabel(r"persistence $\rho_j=\Pr(0\mid 0^j)$")
-a2.set_xlabel(r"depth $j$ (attempts every 2nd slot)"); a2.set_ylabel(r"$\rho^{(2)}_j$")
+a2.set_xlabel(r"depth $j$ (attempts every second slot)"); a2.set_ylabel(r"$\rho^{(2)}_j$")
 from matplotlib.ticker import MaxNLocator
 for a in (a1, a2): a.grid(True, **GRID); a.xaxis.set_major_locator(MaxNLocator(integer=True))
 fig.legend(*a1.get_legend_handles_labels(), frameon=False, fontsize=6.5, loc="lower center", ncol=3, bbox_to_anchor=(0.5, 0.0))

@@ -18,8 +18,9 @@ CACHE = os.path.join(DATA, "streams_sky_dedup.npz")
 
 
 def load_streams():
-    """One stream per (test, sender, receiver). The preprocessed CSVs repeat each such record
-    several times (median 6.4x, identical content), so records are deduplicated on that key."""
+    """One stream per (test, sender, receiver). The preprocessed CSVs repeat most such records
+    several times (about 6.4 copies on average, always with identical content), so records are
+    deduplicated on that key."""
     if os.path.exists(CACHE):
         z = np.load(CACHE, allow_pickle=True); return z["streams"].item()
     streams, seen = {}, set()

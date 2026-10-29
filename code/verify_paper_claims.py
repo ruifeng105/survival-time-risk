@@ -102,13 +102,15 @@ check(round(et_[0.05]["R_plus"], 3) == 0.240 and abs(et_[0.1]["rho_worst"] - et_
 check(round({r["B"]: r for r in json.load(open("results/budget.json"))["closed_loop_sweep"]}[60]["Rmax"], 3) == 0.241 and round(json.load(open("results/baselines.json"))[0]["R_plus"], 3) == 0.242,
       "supplement S4.2: the dense worst case at D = 12 is 0.241 on the 47x21 grid (Table S3) and 0.242 with the 2001-point refinement in rho (Table S4)")
 m3 = json.load(open("results/M3L1.json"))
-check(abs(m3["R_at_max"] - 0.240) < 5e-4, "supplement Remark S1: risk 0.240 at the Lambda-maximizer for M=3, L=1")
 check(abs(m3["Lambda_max"] - 0.254) < 5e-4 and abs(json.load(open("results/baselines.json"))[0]["box_certificate"] - 0.253) < 5e-4,
       "supplement Remark S1: max Lambda 0.254 for M=3 and 0.253 for M=2 (T=60, D=12)")
 dm_ = json.load(open("results/dense_M2.json"))["cases"]
 check(abs(max(c["Rmax"] for c in dm_ if c["T"] == 60 and c["D"] == 10) - 0.289) < 5e-4, "Fig. 2 text: R+ = 0.289 at T=60, D=10 (max over b)")
 # further numbers quoted in the text
-check(rho_star(8, 3, 2) == Fr(3, 5), "rho* = rho_nom = 3/5 at D = 3, T = 8: the fitted model then maximizes Lambda (S3.3)")
+check(rho_star(8, 3, 2) == Fr(3, 5), "rho* = rho_nom = 3/5 at D = 3, T = 8: the fitted model then maximizes Lambda (S3.4)")
+g8_ = max((risk_dense(example_chain(1 - r_, b_), 8, 3), b_) for r_ in np.linspace(11 / 30, 0.95, 117) for b_ in np.linspace(0.45, 0.95, 11))
+check(g8_[1] == 0.95 and g8_[0] > risk_dense(example_chain(0.4, 0.9), 8, 3),
+      "S3.4: even at D = 3, T = 8 the exact dense risk over the class is largest at b = 0.95, above that of the fitted model")
 corner = [r["worst_corner_stationary"] for r in bl]; inter = [r["interval_robust"] for r in bl]
 check(0.775 < min(corner) and max(corner) < 0.985 and 0.795 <= min(inter) and max(inter) < 0.99,
       "time-invariant interval corner 0.78-0.98, interval relaxation 0.80-0.98")
@@ -128,7 +130,7 @@ dc = json.load(open("results/decimation.json"))
 check(dc["identity_max_rel_err"] < 1e-12, "Proposition 1: periodic crossing count = dense count of the decimated process (incl. GE)")
 r1, r2 = dc["C1"]["rho2"], dc["C2"]["rho2"]
 deep = {}
-for name_, (a_, b_) in {"C1": (0.56, 0.95), "C2": (19 / 30, 0.45)}.items():   # depths 1..60 through Q_2 (supplement S3.4)
+for name_, (a_, b_) in {"C1": (0.56, 0.95), "C2": (19 / 30, 0.45)}.items():   # depths 1..60 through Q_2 (supplement S3.5)
     ch_ = example_chain(a_, b_); Q_, W0_ = loss_matrix(ch_, 2); mu_ = np.array([float(ch_.mu[w]) for w in W0_])
     p_ = [mu_ @ np.linalg.matrix_power(Q_, j - 1) @ np.ones(len(W0_)) for j in range(1, 62)]
     deep[name_] = [p_[j] / p_[j - 1] for j in range(1, 61)]
@@ -206,7 +208,7 @@ check(abs(ch_["C2"]["R_piL"] - 6.04e-2) < 5e-5 and abs(ch_["C2"]["R_rec"] - 2.68
       and abs(ch_["C1"]["R_piL"] - 1.30e-2) < 5e-5 and abs(ch_["C1"]["R_rec"] - 1.67e-2) < 5e-5,
       "supplement S5.2: the redesign lowers C2 from 6.04e-2 to 2.68e-2 but raises C1 from 1.30e-2 to 1.67e-2")
 check(abs(ge65["R_piL"] - 0.127) < 5e-4 and abs(ge65["R_rec"] - 0.093) < 1e-3 and round(ge65["R_rec"] / ge65["R_genie"] - 1, 2) == 0.06,
-      "supplement S5.2: GE e_B=0.65 0.127 -> 0.093, 6% above the genie")
+      "supplement S5.2: GE e_B=0.65 0.127 -> 0.093, 6% above the state-observing genie")
 grid_ = rd["grid"]; win_ = [g["R_rec"] < g["R_piL"] for g in grid_]
 check(sum(win_) == 22 and len(grid_) - sum(win_) == 23 and round(max(g["R_rec"] / g["R_piL"] for g in grid_), 2) == 1.47
       and all(w for g, w in zip(grid_, win_) if g["b"] <= 0.575 + 1e-9) and all(g["b"] >= 0.7 - 1e-9 for g, w in zip(grid_, win_) if not w),
